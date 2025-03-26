@@ -1,0 +1,9 @@
+{
+  "name": "@l1network/errors",
+  "main": "src/index.ts",
+  "devDependencies": {},
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {}
+}
