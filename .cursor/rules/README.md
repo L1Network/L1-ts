@@ -4,8 +4,23 @@ This directory contains development standards and Rules for different aspects of
 
 ## Available Rules
 
+### Frontend Development
+
+- **[nextjs.mdc](./nextjs.mdc)**: Next.js development standards and patterns.
 - **[react-hooks.mdc](./react-hooks.mdc)**: React hooks patterns and Rules.
+- **[tailwind.mdc](./tailwind.mdc)**: Tailwind CSS and UI component guidelines.
 - **[typescript.mdc](./typescript.mdc)**: TypeScript coding standards and Rules.
+- **[web-vitals-perf.mdc](./web-vitals-perf.mdc)**: Web Vitals and performance optimization guidelines.
+
+### Web3 Integration
+
+- **[viem.mdc](./viem.mdc)**: Viem v2 integration patterns and Rules.
+- **[wagmi.mdc](./wagmi.mdc)**: Web3 integration patterns using Wagmi v2.
+- **[solidity.mdc](./solidity.mdc)**: Solidity development standards with Foundry.
+
+### Data Layer
+
+- **[ponder.mdc](./ponder.mdc)**: Ponder indexing standards and Rules.
 
 ## Usage
 
