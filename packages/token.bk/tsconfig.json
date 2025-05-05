@@ -1,0 +1,14 @@
+{
+  "extends": "@l1network/tsconfig/react-library.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@l1network/supabase/*": ["./src/*"]
+    }
+  },
+  "include": ["."],
+  "exclude": ["node_modules", "dist"]
+}
