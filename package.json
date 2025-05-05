@@ -1,5 +1,6 @@
 {
   "name": "l1-ts",
+  "type": "module",
   "description": "L1 SDK for TypeScript",
   "scripts": {
     "build": "turbo run build",
@@ -11,11 +12,15 @@
   "devDependencies": {
     "turbo": "^2.4.2",
     "typescript": "5.7.3",
-    "@biomejs/biome": "^1.9.4"
+    "@biomejs/biome": "^1.9.4",
+    "@types/bun": "latest"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=18"
   },
-  "packageManager": "pnpm@8.15.4",
-  "dependencies": {}
+  "packageManager": "bun@1.2.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }

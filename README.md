@@ -23,27 +23,23 @@ A comprehensive TypeScript development kit for building modern web applications 
 ## Development Setup
 
 ### Requirements
-- Node.js 20+
-- pnpm
+- Bun 1.0+
 
 ### Quick Start
 
 ```bash
-# Install package manager
-npm install -g pnpm
-
 # Clone and setup project
 git clone https://github.com/l1-network/l1-ts.git
 cd l1-ts
-pnpm install
+bun install
 ```
 
 ### Development Commands
 
 ```bash
-pnpm dev        # Start development server
-pnpm build      # Create production build
-pnpm test       # Run test suite
+bun dev        # Start development server
+bun build      # Create production build
+bun test       # Run test suite
 ```
 
 ## Usage Examples
