@@ -21,20 +21,28 @@ interface CommandOptions {
   [key: string]: any
 }
 
+// Helper to check if any required options are provided
+const hasAnyArguments = (cmd: any) => cmd.args.length > 0 || Object.keys(cmd.opts()).length > 0
+
 // CLI program setup
 program
   .name('delphioracle-cli')
   .description('CLI to interact with DelphiOracle contract')
   .version('1.0.0')
 
-program
+const registerCmd = program
   .command('register')
   .description('Register as a new oracle')
   .requiredOption('--owner <n>', 'The account that will be registered as an oracle')
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions) => {
+  .action(async (options: CommandOptions, cmd) => {
+    if (!hasAnyArguments(cmd)) {
+      cmd.help()
+      return
+    }
+    
     try {
       await registerUser({
         owner: options.owner!,
@@ -48,7 +56,7 @@ program
     }
   })
 
-program
+const writeCmd = program
   .command('write')
   .description('Submit oracle data points')
   .requiredOption('--owner <n>', 'The oracle account submitting data')
@@ -57,7 +65,12 @@ program
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions) => {
+  .action(async (options: CommandOptions, cmd) => {
+    if (!hasAnyArguments(cmd)) {
+      cmd.help()
+      return
+    }
+    
     try {
       const value = Math.round(parseFloat(options.value) * 10000)
       const quotes = [{ value, pair: options.pair }]
@@ -76,14 +89,19 @@ program
     }
   })
 
-program
+const claimCmd = program
   .command('claim')
   .description('Claim oracle rewards')
   .requiredOption('--owner <n>', 'The oracle account claiming rewards')
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions) => {
+  .action(async (options: CommandOptions, cmd) => {
+    if (!hasAnyArguments(cmd)) {
+      cmd.help()
+      return
+    }
+    
     try {
       await claimOracleRewards({
         owner: options.owner!,
@@ -98,7 +116,7 @@ program
     }
   })
 
-program
+const newPairCmd = program
   .command('new-pair')
   .description('Propose a new trading pair')
   .requiredOption('--proposer <n>', 'The account proposing the new pair')
@@ -113,7 +131,12 @@ program
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions) => {
+  .action(async (options: CommandOptions, cmd) => {
+    if (!hasAnyArguments(cmd)) {
+      cmd.help()
+      return
+    }
+    
     try {
       const pair = {
         name: options.name,
@@ -140,12 +163,17 @@ program
     }
   })
 
-program
+const statsCmd = program
   .command('stats')
   .description('Get oracle statistics')
   .requiredOption('--owner <n>', 'The oracle account to check')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions) => {
+  .action(async (options: CommandOptions, cmd) => {
+    if (!hasAnyArguments(cmd)) {
+      cmd.help()
+      return
+    }
+    
     try {
       const stats = await getOracleStats(options.owner!, options.rpc)
       
@@ -164,11 +192,16 @@ program
     }
   })
 
-program
+const pairsCmd = program
   .command('pairs')
   .description('List all active trading pairs')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions) => {
+  .action(async (options: CommandOptions, cmd) => {
+    if (!hasAnyArguments(cmd)) {
+      cmd.help()
+      return
+    }
+    
     try {
       const pairs = await getAllPairs(options.rpc)
       
@@ -192,7 +225,7 @@ program
     }
   })
 
-program
+const voteBountyCmd = program
   .command('vote-bounty')
   .description('Vote for a bounty')
   .requiredOption('--owner <n>', 'The account voting')
@@ -200,7 +233,12 @@ program
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions) => {
+  .action(async (options: CommandOptions, cmd) => {
+    if (!hasAnyArguments(cmd)) {
+      cmd.help()
+      return
+    }
+    
     try {
       await voteBounty({
         owner: options.owner!,
@@ -216,7 +254,7 @@ program
     }
   })
 
-program
+const writeHashCmd = program
   .command('write-hash')
   .description('Write hash for multi-party oracle')
   .requiredOption('--owner <n>', 'The oracle account submitting hash')
@@ -225,7 +263,12 @@ program
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions) => {
+  .action(async (options: CommandOptions, cmd) => {
+    if (!hasAnyArguments(cmd)) {
+      cmd.help()
+      return
+    }
+    
     try {
       await writeHash({
         owner: options.owner!,
@@ -242,7 +285,7 @@ program
     }
   })
 
-program
+const deletePairCmd = program
   .command('delete-pair')
   .description('Delete an existing trading pair')
   .requiredOption('--owner <n>', 'The account that will delete the pair')
@@ -251,7 +294,12 @@ program
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions) => {
+  .action(async (options: CommandOptions, cmd) => {
+    if (!hasAnyArguments(cmd)) {
+      cmd.help()
+      return
+    }
+    
     try {
       await deletePair({
         owner: options.owner!,
