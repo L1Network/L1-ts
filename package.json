@@ -9,11 +9,17 @@
     "lint": "biome check .",
     "lint:fix": "biome check . --write"
   },
+  "dependencies": {
+    "@wharfkit/antelope": "^1.0.13",
+    "@wharfkit/contract": "^1.2.1",
+    "@wharfkit/session": "^1.6.0",
+    "@wharfkit/wallet-plugin-privatekey": "^1.1.0"
+  },
   "devDependencies": {
-    "turbo": "^2.4.2",
-    "typescript": "5.7.3",
     "@biomejs/biome": "^1.9.4",
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "turbo": "^2.4.2",
+    "typescript": "5.7.3"
   },
   "engines": {
     "node": ">=18"
