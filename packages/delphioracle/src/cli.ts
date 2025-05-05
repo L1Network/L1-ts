@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 import { program } from 'commander'
 import { 
-  registerUser, 
-  writeOracleData, 
   claimOracleRewards, 
   createNewPair, 
-  getOracleStats,
+  deletePair,
   getAllPairs,
+  getOracleStats,
+  registerUser, 
   voteBounty,
   writeHash,
-  deletePair
+  writeOracleData 
 } from './sdk'
 
 // Interface for common command options

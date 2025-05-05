@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { program } from 'commander'
-import { createToken, getAllTokens } from './sdk'
 import { env } from './environment'
+import { createToken, getAllTokens } from './sdk'
 
 program
   .name('bitcash-token-cli')

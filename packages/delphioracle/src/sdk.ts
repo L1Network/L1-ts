@@ -1,9 +1,9 @@
+import { APIClient } from '@wharfkit/antelope'
+import { Checksum256, Name, PermissionLevel, UInt64 } from '@wharfkit/antelope'
 import { Contract as OracleContract, Types } from './delphioracle'
 import type { ActionParams } from './delphioracle'
-import { APIClient } from '@wharfkit/antelope'
-import { Name, UInt64, Checksum256, PermissionLevel } from '@wharfkit/antelope'
 import { env } from './environment'
-import { createTransaction, extractErrorDetails, debugLog } from './wharfkit'
+import { createTransaction, debugLog, extractErrorDetails } from './wharfkit'
 
 // Register as an oracle
 export const registerUser = async ({ 

@@ -1,7 +1,7 @@
+import { APIClient, Asset, Checksum256, Name, NameType, PermissionLevelType } from '@wharfkit/antelope'
 import session, { Session } from '@wharfkit/session'
 import { WalletPluginPrivateKey } from '@wharfkit/wallet-plugin-privatekey'
 import { Contract } from './token.bk'
-import { Asset, Name, NameType, APIClient, Checksum256, PermissionLevelType } from '@wharfkit/antelope'
 
 export const chain = {
   id: Checksum256.from('e28174b34639a5ba006265f3641c8ffc1021d65c4cd12fbf242e5c6a6fde6a55'),
