@@ -1,6 +1,6 @@
 {
-  "name": "@l1network/accounts.bk",
-  "description": "Bitcash accounts SDK for TypeScript",
+  "name": "@l1network/token.bk",
+  "description": "Delphi Oracle SDK for TypeScript",
   "module": "src/index.ts",
   "type": "module",
   "devDependencies": {
