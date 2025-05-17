@@ -6,6 +6,8 @@ import {
   deletePair,
   getAllPairs,
   getOracleStats,
+  getTableScopes,
+  readTableData,
   registerUser, 
   voteBounty,
   writeHash,
@@ -18,11 +20,9 @@ interface CommandOptions {
   privateKey?: string
   permission?: string
   rpc?: string
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   [key: string]: any
 }
-
-// Helper to check if any required options are provided
-const hasAnyArguments = (cmd: any) => cmd.args.length > 0 || Object.keys(cmd.opts()).length > 0
 
 // CLI program setup
 program
@@ -30,22 +30,17 @@ program
   .description('CLI to interact with DelphiOracle contract')
   .version('1.0.0')
 
-const registerCmd = program
+program
   .command('register')
   .description('Register as a new oracle')
   .requiredOption('--owner <n>', 'The account that will be registered as an oracle')
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions, cmd) => {
-    if (!hasAnyArguments(cmd)) {
-      cmd.help()
-      return
-    }
-    
+  .action(async (options: CommandOptions) => {
     try {
       await registerUser({
-        owner: options.owner!,
+        owner: options.owner,
         privateKey: options.privateKey,
         permission: options.permission,
         rpcEndpoint: options.rpc
@@ -56,7 +51,7 @@ const registerCmd = program
     }
   })
 
-const writeCmd = program
+program
   .command('write')
   .description('Submit oracle data points')
   .requiredOption('--owner <n>', 'The oracle account submitting data')
@@ -65,18 +60,13 @@ const writeCmd = program
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions, cmd) => {
-    if (!hasAnyArguments(cmd)) {
-      cmd.help()
-      return
-    }
-    
+  .action(async (options: CommandOptions) => {
     try {
-      const value = Math.round(parseFloat(options.value) * 10000)
+      const value = Math.round(Number.parseFloat(options.value) * 10000)
       const quotes = [{ value, pair: options.pair }]
       
       await writeOracleData({
-        owner: options.owner!,
+        owner: options.owner,
         quotes,
         privateKey: options.privateKey,
         permission: options.permission,
@@ -89,22 +79,17 @@ const writeCmd = program
     }
   })
 
-const claimCmd = program
+program
   .command('claim')
   .description('Claim oracle rewards')
   .requiredOption('--owner <n>', 'The oracle account claiming rewards')
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions, cmd) => {
-    if (!hasAnyArguments(cmd)) {
-      cmd.help()
-      return
-    }
-    
+  .action(async (options: CommandOptions) => {
     try {
       await claimOracleRewards({
-        owner: options.owner!,
+        owner: options.owner,
         privateKey: options.privateKey,
         permission: options.permission,
         rpcEndpoint: options.rpc
@@ -116,7 +101,7 @@ const claimCmd = program
     }
   })
 
-const newPairCmd = program
+program
   .command('new-pair')
   .description('Propose a new trading pair')
   .requiredOption('--proposer <n>', 'The account proposing the new pair')
@@ -131,26 +116,21 @@ const newPairCmd = program
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions, cmd) => {
-    if (!hasAnyArguments(cmd)) {
-      cmd.help()
-      return
-    }
-    
+  .action(async (options: CommandOptions) => {
     try {
       const pair = {
         name: options.name,
         base_symbol: options.baseSymbol,
-        base_type: parseInt(options.baseType),
+        base_type: Number.parseInt(options.baseType),
         base_contract: options.baseContract,
         quote_symbol: options.quoteSymbol,
-        quote_type: parseInt(options.quoteType),
+        quote_type: Number.parseInt(options.quoteType),
         quote_contract: options.quoteContract,
-        quoted_precision: parseInt(options.quotedPrecision)
+        quoted_precision: Number.parseInt(options.quotedPrecision)
       }
       
       await createNewPair({
-        proposer: options.proposer!,
+        proposer: options.proposer,
         pair,
         privateKey: options.privateKey,
         permission: options.permission,
@@ -163,19 +143,14 @@ const newPairCmd = program
     }
   })
 
-const statsCmd = program
+program
   .command('stats')
   .description('Get oracle statistics')
   .requiredOption('--owner <n>', 'The oracle account to check')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions, cmd) => {
-    if (!hasAnyArguments(cmd)) {
-      cmd.help()
-      return
-    }
-    
+  .action(async (options: CommandOptions) => {
     try {
-      const stats = await getOracleStats(options.owner!, options.rpc)
+      const stats = await getOracleStats(options.owner, options.rpc)
       
       if (stats) {
         console.log('Oracle statistics:')
@@ -192,16 +167,11 @@ const statsCmd = program
     }
   })
 
-const pairsCmd = program
+program
   .command('pairs')
   .description('List all active trading pairs')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions, cmd) => {
-    if (!hasAnyArguments(cmd)) {
-      cmd.help()
-      return
-    }
-    
+  .action(async (options: CommandOptions) => {
     try {
       const pairs = await getAllPairs(options.rpc)
       
@@ -209,14 +179,14 @@ const pairsCmd = program
         console.log('Active trading pairs:')
         console.log('-------------------')
         
-        pairs.forEach(pair => {
+        for (const pair of pairs) {
           console.log(`Name: ${pair.name}`)
           console.log(`Base Symbol: ${pair.base_symbol}`)
           console.log(`Quote Symbol: ${pair.quote_symbol}`)
           console.log(`Quoted Precision: ${pair.quoted_precision}`)
           console.log(`Owner: ${pair.proposer}`)
           console.log('-------------------')
-        })
+        }
       } else {
         console.log('No active trading pairs found')
       }
@@ -225,7 +195,7 @@ const pairsCmd = program
     }
   })
 
-const voteBountyCmd = program
+program
   .command('vote-bounty')
   .description('Vote for a bounty')
   .requiredOption('--owner <n>', 'The account voting')
@@ -233,16 +203,11 @@ const voteBountyCmd = program
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions, cmd) => {
-    if (!hasAnyArguments(cmd)) {
-      cmd.help()
-      return
-    }
-    
+  .action(async (options: CommandOptions) => {
     try {
       await voteBounty({
-        owner: options.owner!,
-        bounty: options.bounty!,
+        owner: options.owner,
+        bounty: options.bounty,
         privateKey: options.privateKey,
         permission: options.permission,
         rpcEndpoint: options.rpc
@@ -254,7 +219,7 @@ const voteBountyCmd = program
     }
   })
 
-const writeHashCmd = program
+program
   .command('write-hash')
   .description('Write hash for multi-party oracle')
   .requiredOption('--owner <n>', 'The oracle account submitting hash')
@@ -263,17 +228,12 @@ const writeHashCmd = program
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions, cmd) => {
-    if (!hasAnyArguments(cmd)) {
-      cmd.help()
-      return
-    }
-    
+  .action(async (options: CommandOptions) => {
     try {
       await writeHash({
-        owner: options.owner!,
-        hash: options.hash!,
-        reveal: options.reveal!,
+        owner: options.owner,
+        hash: options.hash,
+        reveal: options.reveal,
         privateKey: options.privateKey,
         permission: options.permission,
         rpcEndpoint: options.rpc
@@ -285,7 +245,7 @@ const writeHashCmd = program
     }
   })
 
-const deletePairCmd = program
+program
   .command('delete-pair')
   .description('Delete an existing trading pair')
   .requiredOption('--owner <n>', 'The account that will delete the pair')
@@ -294,17 +254,12 @@ const deletePairCmd = program
   .option('--private-key <key>', 'Private key for signing transactions (REQUIRED unless set as env var)')
   .option('--permission <permission>', 'Permission to use for signing')
   .option('--rpc <url>', 'RPC endpoint URL')
-  .action(async (options: CommandOptions, cmd) => {
-    if (!hasAnyArguments(cmd)) {
-      cmd.help()
-      return
-    }
-    
+  .action(async (options: CommandOptions) => {
     try {
       await deletePair({
-        owner: options.owner!,
-        pairName: options.pair!,
-        reason: options.reason!,
+        owner: options.owner,
+        pairName: options.pair,
+        reason: options.reason,
         privateKey: options.privateKey,
         permission: options.permission,
         rpcEndpoint: options.rpc
@@ -313,6 +268,99 @@ const deletePairCmd = program
       console.log(`Successfully deleted pair: ${options.pair}`)
     } catch (error) {
       console.error('Error deleting pair:', error instanceof Error ? error.message : error)
+    }
+  })
+
+program
+  .command('table [tableName]')
+  .description('Read data from a DelphiOracle contract table with filtering options\n' +
+    'Available tables: abusers, bars, custodians, datapoints, donations, global, hashes, networks, ' +
+    'npairs, oglobal, pairs, producers, stats, users, voters')
+  .option('--table <name>', 'Name of the table to read (e.g., pairs, stats, users)')
+  .option('--scope <scope>', 'Scope for the table lookup')
+  .option('--key <key>', 'Primary key to filter by (for single row)')
+  .option('--from <value>', 'Start primary key value for range query')
+  .option('--to <value>', 'End primary key value for range query')
+  .option('--index <number>', 'Index position to use (default: primary key)')
+  .option('--key-type <type>', 'Type of the key for secondary indices')
+  .option('--lower <value>', 'Lower bound value for range queries')
+  .option('--upper <value>', 'Upper bound value for range queries')
+  .option('--limit <number>', 'Maximum number of rows to return')
+  .option('--reverse', 'Reverse the order of results')
+  .option('--paginate', 'Show pagination info instead of all rows')
+  .option('--rpc <url>', 'RPC endpoint URL')
+  .action(async (tableName, options: CommandOptions) => {
+    try {
+      // Allow table name to be specified as positional argument or option
+      const tableToQuery = tableName || options.table
+      
+      if (!tableToQuery) {
+        console.error('Error: Table name is required. Please specify a table name.')
+        console.log('Available tables: abusers, bars, custodians, datapoints, donations, global, hashes, networks, ' +
+          'npairs, oglobal, pairs, producers, stats, users, voters')
+        return
+      }
+      
+      // Use the unified readTableData function for all cases
+      const result = await readTableData({
+        tableName: tableToQuery,
+        scope: options.scope,
+        primaryKey: options.key,
+        from: options.from,
+        to: options.to,
+        indexPosition: options.index ? Number.parseInt(options.index) : undefined,
+        keyType: options.keyType,
+        lowerBound: options.lower,
+        upperBound: options.upper,
+        limit: options.limit ? Number.parseInt(options.limit) : undefined,
+        reverse: !!options.reverse,
+        showPagination: !!options.paginate,
+        rpcEndpoint: options.rpc
+      })
+      
+      // Use descriptive output based on what was requested
+      const outputLabel = options.key ? 'Table row:' : 'Query results:'
+      console.log(outputLabel)
+      console.log(JSON.stringify(result, null, 2))
+    } catch (error) {
+      console.error('Error reading table data:', error instanceof Error ? error.message : error)
+    }
+  })
+
+program
+  .command('get-scopes [tableName]')
+  .description('Get all scopes for a DelphiOracle contract table\n' +
+    'Available tables: abusers, bars, custodians, datapoints, donations, global, hashes, networks, ' +
+    'npairs, oglobal, pairs, producers, stats, users, voters')
+  .option('--table <name>', 'Name of the table to check')
+  .option('--limit <number>', 'Maximum number of scopes to return')
+  .option('--lower <value>', 'Lower bound scope name')
+  .option('--upper <value>', 'Upper bound scope name')
+  .option('--rpc <url>', 'RPC endpoint URL')
+  .action(async (tableName, options: CommandOptions) => {
+    try {
+      // Allow table name to be specified as positional argument or option
+      const tableToQuery = tableName || options.table
+      
+      if (!tableToQuery) {
+        console.error('Error: Table name is required. Please specify a table name.')
+        console.log('Available tables: abusers, bars, custodians, datapoints, donations, global, hashes, networks, ' +
+          'npairs, oglobal, pairs, producers, stats, users, voters')
+        return
+      }
+      
+      const scopes = await getTableScopes({
+        tableName: tableToQuery,
+        limit: options.limit ? Number.parseInt(options.limit) : undefined,
+        lowerBound: options.lower,
+        upperBound: options.upper,
+        rpcEndpoint: options.rpc
+      })
+      
+      console.log('Table scopes:')
+      console.log(JSON.stringify(scopes, null, 2))
+    } catch (error) {
+      console.error('Error retrieving table scopes:', error instanceof Error ? error.message : error)
     }
   })
 

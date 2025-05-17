@@ -1,6 +1,6 @@
 import { APIClient } from '@wharfkit/antelope'
 import { Checksum256, Name, PermissionLevel, UInt64 } from '@wharfkit/antelope'
-import { Contract as OracleContract, Types } from './delphioracle'
+import { Contract as OracleContract, TableMap, type TableNames, Types } from './delphioracle'
 import type { ActionParams } from './delphioracle'
 import { env } from './environment'
 import { createTransaction, debugLog, extractErrorDetails } from './wharfkit'
@@ -20,10 +20,9 @@ export const registerUser = async ({
   try {
     const client = new APIClient({ url: rpcEndpoint })
     const contract = new OracleContract({ account: Name.from(env.oracleContract), client })
+    const actionData = { owner: Name.from(owner) }
     
-    const action = contract.action('reguser', {
-      owner: Name.from(owner)
-    }, {
+    const action = contract.action('reguser', actionData, {
       authorization: [
         PermissionLevel.from({
           actor: Name.from(owner),
@@ -33,7 +32,6 @@ export const registerUser = async ({
     })
     
     return createTransaction({ 
-      account: owner, 
       action, 
       privateKey, 
       permission, 
@@ -70,10 +68,13 @@ export const writeOracleData = async ({
       pair: Name.from(q.pair)
     }))
     
-    const action = contract.action('write', {
+    const actionData = {
       owner: Name.from(owner),
       quotes: formattedQuotes
-    }, {
+    }
+    debugLog('Creating write action:', actionData)
+    
+    const action = contract.action('write', actionData, {
       authorization: [
         PermissionLevel.from({
           actor: Name.from(owner),
@@ -83,14 +84,13 @@ export const writeOracleData = async ({
     })
     
     return createTransaction({ 
-      account: owner, 
       action, 
       privateKey, 
       permission, 
       rpcEndpoint 
     })
   } catch (error) {
-    console.error(`Failed to write oracle data:`, error)
+    console.error('Failed to write oracle data:', error)
     const errorMessage = extractErrorDetails(error) || 'Failed to write oracle data'
     throw new Error(errorMessage)
   }
@@ -112,9 +112,10 @@ export const claimOracleRewards = async ({
     const client = new APIClient({ url: rpcEndpoint })
     const contract = new OracleContract({ account: Name.from(env.oracleContract), client })
     
-    const action = contract.action('claim', {
-      owner: Name.from(owner)
-    }, {
+    const actionData = { owner: Name.from(owner) }
+    debugLog('Creating claim action:', actionData)
+    
+    const action = contract.action('claim', actionData, {
       authorization: [
         PermissionLevel.from({
           actor: Name.from(owner),
@@ -124,7 +125,6 @@ export const claimOracleRewards = async ({
     })
     
     return createTransaction({ 
-      account: owner, 
       action, 
       privateKey, 
       permission, 
@@ -156,7 +156,7 @@ export const createNewPair = async ({
     const client = new APIClient({ url: rpcEndpoint })
     const contract = new OracleContract({ account: Name.from(env.oracleContract), client })
     
-    const action = contract.action('newbounty', {
+    const actionData = {
       proposer: Name.from(proposer),
       pair: {
         name: Name.from(pair.name),
@@ -168,7 +168,10 @@ export const createNewPair = async ({
         quote_contract: Name.from(pair.quote_contract),
         quoted_precision: UInt64.from(pair.quoted_precision)
       }
-    }, {
+    }
+    debugLog('Creating newbounty action:', actionData)
+    
+    const action = contract.action('newbounty', actionData, {
       authorization: [
         PermissionLevel.from({
           actor: Name.from(proposer),
@@ -178,7 +181,6 @@ export const createNewPair = async ({
     })
     
     return createTransaction({ 
-      account: proposer, 
       action, 
       privateKey, 
       permission, 
@@ -216,6 +218,231 @@ export const getOracleStats = async (
   }
 }
 
+/**
+ * Read data from a DelphiOracle contract table with filtering options
+ * Provides flexible options for querying, filtering, and pagination
+ */
+export const readTableData = async ({ 
+  tableName, 
+  scope,
+  primaryKey,
+  from,
+  to,
+  indexPosition,
+  keyType,
+  lowerBound,
+  upperBound,
+  limit = 100,
+  reverse = false,
+  showPagination = false,
+  rpcEndpoint = env.defaultRpc
+}: {
+  tableName: TableNames
+  scope?: string
+  primaryKey?: string
+  from?: string
+  to?: string
+  indexPosition?: number
+  keyType?: string
+  lowerBound?: string
+  upperBound?: string
+  limit?: number
+  reverse?: boolean
+  showPagination?: boolean
+  rpcEndpoint?: string
+}) => {
+  try {
+    // Validate if table exists in TableMap
+    if (!Object.keys(TableMap).includes(tableName)) {
+      throw new Error('Table \'' + tableName + '\' does not exist in contract')
+    }
+
+    debugLog('Querying table ' + tableName)
+    const client = new APIClient({ url: rpcEndpoint })
+    const contract = new OracleContract({ account: Name.from(env.oracleContract), client })
+    
+    // Create table instance with optional scope
+    const table = scope 
+      ? contract.table(tableName as TableNames, Name.from(scope))
+      : contract.table(tableName as TableNames)
+    
+    // If primaryKey is provided, get a single row
+    if (primaryKey) {
+      const result = await table.get(primaryKey)
+      debugLog('Single row response', result)
+      return result
+    }
+    
+    // Create query params with all the filtering options
+    const queryParams: any = {
+      ...(from ? { from } : {}),
+      ...(to ? { to } : {}),
+      ...(indexPosition !== undefined ? { index: indexPosition } : {}),
+      ...(keyType ? { keyType } : {}),
+      ...(lowerBound ? { lowerBound } : {}),
+      ...(upperBound ? { upperBound } : {}),
+      limit,
+      reverse
+    }
+    
+    // Create cursor for pagination
+    const cursor = table.query(queryParams)
+    
+    if (showPagination) {
+      // Return first page with cursor for pagination
+      const firstPage = await cursor.next(limit)
+      return {
+        rows: firstPage,
+        hasMore: firstPage.length === limit,
+        tableName,
+        queryParams
+      }
+    }
+    
+    // Return all rows matching the query
+    const rows = await cursor.all()
+    debugLog('Retrieved ' + rows.length + ' rows from ' + tableName)
+    return { rows, tableName }
+  } catch (error) {
+    console.error('Failed to query table ' + tableName + ':', error)
+    const errorMessage = extractErrorDetails(error) || 'Failed to query table ' + tableName
+    throw new Error(errorMessage)
+  }
+}
+
+/**
+ * Advanced table data reader with pagination, filtering, and range queries
+ */
+export const queryTableData = async ({ 
+  tableName, 
+  scope,
+  primaryKey,
+  from,
+  to,
+  indexPosition,
+  keyType,
+  lowerBound,
+  upperBound,
+  limit = 100,
+  reverse = false,
+  showPagination = false,
+  rpcEndpoint = env.defaultRpc
+}: {
+  tableName: TableNames
+  scope?: string
+  primaryKey?: string
+  from?: string
+  to?: string
+  indexPosition?: number
+  keyType?: string
+  lowerBound?: string
+  upperBound?: string
+  limit?: number
+  reverse?: boolean
+  showPagination?: boolean
+  rpcEndpoint?: string
+}) => {
+  try {
+    // Validate if table exists in TableMap
+    if (!Object.keys(TableMap).includes(tableName)) {
+      throw new Error('Table \'' + tableName + '\' does not exist in contract')
+    }
+
+    debugLog('Querying table ' + tableName)
+    const client = new APIClient({ url: rpcEndpoint })
+    const contract = new OracleContract({ account: Name.from(env.oracleContract), client })
+    
+    // Create table instance with optional scope
+    const table = scope 
+      ? contract.table(tableName as TableNames, Name.from(scope))
+      : contract.table(tableName as TableNames)
+    
+    // If primaryKey is provided, get a single row
+    if (primaryKey) {
+      const result = await table.get(primaryKey)
+      debugLog('Single row response', result)
+      return result
+    }
+    
+    // Create query params with all the filtering options
+    const queryParams: any = {
+      ...(from ? { from } : {}),
+      ...(to ? { to } : {}),
+      ...(indexPosition !== undefined ? { index: indexPosition } : {}),
+      ...(keyType ? { keyType } : {}),
+      ...(lowerBound ? { lowerBound } : {}),
+      ...(upperBound ? { upperBound } : {}),
+      limit,
+      reverse
+    }
+    
+    // Create cursor for pagination
+    const cursor = table.query(queryParams)
+    
+    if (showPagination) {
+      // Return first page with cursor for pagination
+      const firstPage = await cursor.next(limit)
+      return {
+        rows: firstPage,
+        hasMore: firstPage.length === limit,
+        tableName,
+        queryParams
+      }
+    } else {
+      // Return all rows matching the query
+      const rows = await cursor.all()
+      debugLog('Retrieved ' + rows.length + ' rows from ' + tableName)
+      return { rows, tableName }
+    }
+  } catch (error) {
+    console.error('Failed to query table ' + tableName + ':', error)
+    const errorMessage = extractErrorDetails(error) || 'Failed to query table ' + tableName
+    throw new Error(errorMessage)
+  }
+}
+
+// Get table scopes
+export const getTableScopes = async ({
+  tableName,
+  limit = 100,
+  lowerBound,
+  upperBound,
+  rpcEndpoint = env.defaultRpc
+}: {
+  tableName: TableNames
+  limit?: number
+  lowerBound?: string
+  upperBound?: string
+  rpcEndpoint?: string
+}) => {
+  try {
+    // Validate if table exists in TableMap
+    if (!Object.keys(TableMap).includes(tableName)) {
+      throw new Error('Table \'' + tableName + '\' does not exist in contract')
+    }
+
+    debugLog('Getting scopes for table ' + tableName)
+    const client = new APIClient({ url: rpcEndpoint })
+    const contract = new OracleContract({ account: Name.from(env.oracleContract), client })
+    
+    // Get the table instance
+    const table = contract.table(tableName as TableNames)
+    
+    // Create scope cursor
+    const scopeCursor = table.scopes()
+    
+    // Get all scopes
+    const scopes = await scopeCursor.all()
+    debugLog('Retrieved ' + scopes.length + ' scopes for ' + tableName)
+    
+    return scopes
+  } catch (error) {
+    console.error('Failed to get scopes for table ' + tableName + ':', error)
+    const errorMessage = extractErrorDetails(error) || 'Failed to get scopes for table ' + tableName
+    throw new Error(errorMessage)
+  }
+}
+
 // Get all active pairs
 export const getAllPairs = async (
   rpcEndpoint = env.defaultRpc
@@ -231,7 +458,8 @@ export const getAllPairs = async (
     debugLog('Table rows response', rows)
     
     // Filter active pairs only from the result array
-    return rows.filter(pair => pair.active)
+    // return rows.filter(pair => pair.active)
+    return rows
   } catch (error) {
     console.error('Failed to get active pairs:', error)
     
@@ -258,10 +486,13 @@ export const voteBounty = async ({
     const client = new APIClient({ url: rpcEndpoint })
     const contract = new OracleContract({ account: Name.from(env.oracleContract), client })
     
-    const action = contract.action('votebounty', {
+    const actionData = {
       owner: Name.from(owner),
       bounty: Name.from(bounty)
-    }, {
+    }
+    debugLog('Creating votebounty action:', actionData)
+    
+    const action = contract.action('votebounty', actionData, {
       authorization: [
         PermissionLevel.from({
           actor: Name.from(owner),
@@ -271,7 +502,6 @@ export const voteBounty = async ({
     })
     
     return createTransaction({ 
-      account: owner, 
       action, 
       privateKey, 
       permission, 
@@ -305,11 +535,14 @@ export const writeHash = async ({
     const client = new APIClient({ url: rpcEndpoint })
     const contract = new OracleContract({ account: Name.from(env.oracleContract), client })
     
-    const action = contract.action('writehash', {
+    const actionData = {
       owner: Name.from(owner),
       hash: Checksum256.from(hash),
       reveal
-    }, {
+    }
+    debugLog('Creating writehash action:', actionData)
+    
+    const action = contract.action('writehash', actionData, {
       authorization: [
         PermissionLevel.from({
           actor: Name.from(owner),
@@ -319,7 +552,6 @@ export const writeHash = async ({
     })
     
     return createTransaction({ 
-      account: owner, 
       action, 
       privateKey, 
       permission, 
@@ -353,10 +585,13 @@ export const deletePair = async ({
     const client = new APIClient({ url: rpcEndpoint })
     const contract = new OracleContract({ account: Name.from(env.oracleContract), client })
     
-    const action = contract.action('deletepair', {
+    const actionData = {
       name: Name.from(pairName),
       reason
-    }, {
+    }
+    debugLog('Creating deletepair action:', actionData)
+    
+    const action = contract.action('deletepair', actionData, {
       authorization: [
         PermissionLevel.from({
           actor: Name.from(owner),
@@ -366,7 +601,6 @@ export const deletePair = async ({
     })
     
     return createTransaction({ 
-      account: owner, 
       action, 
       privateKey, 
       permission, 
@@ -379,3 +613,48 @@ export const deletePair = async ({
     throw new Error(errorMessage)
   }
 }
+
+// Edit an existing pair
+export const editPair = async ({
+  owner,
+  pair,
+  privateKey = env.defaultPrivateKey,
+  permission = env.defaultPermission,
+  rpcEndpoint = env.defaultRpc
+}: {
+  owner: string
+  pair: Types.pairs
+  privateKey?: string
+  permission?: string
+  rpcEndpoint?: string
+}) => {
+  try {
+    const client = new APIClient({ url: rpcEndpoint })
+    const contract = new OracleContract({ account: Name.from(env.oracleContract), client })
+    
+    const actionData = { pair }
+    debugLog('Creating editpair action:', actionData)
+    
+    const action = contract.action('editpair', actionData, {
+      authorization: [
+        PermissionLevel.from({
+          actor: Name.from(owner),
+          permission: Name.from(permission)
+        })
+      ]
+    })
+    
+    return createTransaction({ 
+      action, 
+      privateKey, 
+      permission, 
+      rpcEndpoint 
+    })
+  } catch (error) {
+    console.error(`Failed to edit pair ${pair.name} by ${owner}:`, error)
+    
+    const errorMessage = extractErrorDetails(error) || 'Failed to edit pair'
+    throw new Error(errorMessage)
+  }
+}
+
